@@ -35,6 +35,7 @@ input,select,textarea{font:inherit;color:var(--text);background:var(--card);bord
 .hint{font-size:13px;color:var(--muted);align-self:center}
 .btn{border:0;border-radius:14px;padding:15px;font-size:17px;font-weight:700;background:var(--pri);color:var(--pri-t);width:100%}
 .btn:disabled{opacity:.5}
+.btnrow{display:flex;gap:8px}
 .btn.ghost{background:var(--chip);color:var(--pri)}
 .btn.red{background:transparent;color:var(--danger)}
 /* Danh sách */
@@ -49,6 +50,7 @@ input,select,textarea{font:inherit;color:var(--text);background:var(--card);bord
 .item.done .t{text-decoration:line-through;color:var(--muted)}
 .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;font-size:12px;color:var(--muted)}
 .tag{background:var(--chip);color:var(--pri);padding:2px 8px;border-radius:999px;font-weight:600}
+.del{border:0;background:transparent;font-size:18px;padding:4px 6px;flex:none;align-self:flex-start;opacity:.7}
 input[type=checkbox]{width:24px;height:24px;padding:0;accent-color:var(--ok);flex:none;margin-top:2px}
 .empty{text-align:center;color:var(--muted);padding:40px 10px}
 /* Modal */
@@ -80,7 +82,10 @@ input[type=checkbox]{width:24px;height:24px;padding:0;accent-color:var(--ok);fle
       <div class="bottom">
         <input id="cat" placeholder="Phân loại (gõ để gợi ý hoặc tạo mới)" autocomplete="off">
         <div class="chips" id="chips"></div>
-        <button class="btn" id="save">Lưu</button>
+        <div class="btnrow">
+          <button class="btn ghost" id="newNote" style="flex:1">＋ Mới</button>
+          <button class="btn" id="save" style="flex:2">Lưu</button>
+        </div>
       </div>
     </section>
 
@@ -213,9 +218,15 @@ $('save').onclick = async () => {
   try {
     const j = await api('add', { text, cat });
     items.unshift(j.item); persist();
-    $('txt').value = ''; renderChips(); toast('✓ Đã lưu');
+    $('txt').value = ''; localStorage.removeItem('nk_draft'); renderChips(); toast('✓ Đã lưu');
+    $('txt').focus();
   } catch (e) { toast('Không lưu được: ' + e.message, true); }
   $('save').disabled = false; $('save').textContent = 'Lưu';
+};
+$('newNote').onclick = () => {
+  const t = $('txt').value.trim();
+  if (t && !confirm('Ô nhập đang có nội dung chưa lưu. Xóa để tạo ghi chú mới?')) return;
+  $('txt').value = ''; $('cat').value = ''; localStorage.removeItem('nk_draft'); renderChips(); $('txt').focus();
 };
 $('txt').oninput = () => { try { localStorage.setItem('nk_draft', $('txt').value); } catch (e) {} };
 $('txt').value = localStorage.getItem('nk_draft') || '';
@@ -241,7 +252,8 @@ function renderList() {
   const card = i => `<div class="item ${i.done ? 'done' : ''}" data-id="${esc(i.id)}">
     <input type="checkbox" data-chk="${esc(i.id)}" ${i.done ? 'checked' : ''}>
     <div class="body" data-edit="${esc(i.id)}"><div class="t">${esc(i.text)}</div>
-    <div class="meta"><span class="tag">${esc(i.cat || '—')}</span><span>${fmt(i.time)}</span>${i.upd && i.upd !== i.time ? '<span>✎ đã sửa</span>' : ''}</div></div></div>`;
+    <div class="meta"><span class="tag">${esc(i.cat || '—')}</span><span>${fmt(i.time)}</span>${i.upd && i.upd !== i.time ? '<span>✎ đã sửa</span>' : ''}</div></div>
+    <button class="del" data-del="${esc(i.id)}" aria-label="Xóa">🗑</button></div>`;
   if (!g) { $('list').innerHTML = L.map(card).join(''); return; }
   const groups = {};
   L.forEach(i => { const k = g === 'cat' ? (i.cat || 'Chưa phân loại') : dayOf(i.time); (groups[k] = groups[k] || []).push(i); });
@@ -250,6 +262,17 @@ function renderList() {
 ['q', 'fCat', 'fSt', 'fGrp'].forEach(id => $(id).addEventListener('input', renderList));
 
 $('list').onclick = async e => {
+  const del = e.target.closest('[data-del]');
+  if (del) {
+    const it = items.find(i => i.id === del.dataset.del); if (!it) return;
+    const preview = it.text.length > 60 ? it.text.slice(0, 60) + '…' : it.text;
+    if (!confirm('Xóa ghi chú này?\n\n' + preview + '\n\nKhông thể khôi phục.')) return;
+    try {
+      await api('delete', { id: it.id });
+      items = items.filter(i => i !== it); persist(); buildFilter(); renderList(); toast('Đã xóa');
+    } catch (er) { toast('Lỗi: ' + er.message, true); }
+    return;
+  }
   const chk = e.target.closest('[data-chk]');
   if (chk) {
     const it = items.find(i => i.id === chk.dataset.chk); if (!it) return;
