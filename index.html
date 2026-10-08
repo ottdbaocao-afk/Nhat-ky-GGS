@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Nhật ký nhanh</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6feb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Nhật ký">
+<link rel="apple-touch-icon" id="touchIcon" href="">
+<link rel="manifest" id="manifestLink" href="">
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--text:#1b1f24;--muted:#6b7280;--line:#e5e7eb;--pri:#1f6feb;--pri-t:#fff;--ok:#16a34a;--danger:#dc2626;--chip:#eaf1fe}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#1a1d23;--text:#e8eaed;--muted:#9aa0a6;--line:#2c3038;--pri:#4c8dff;--pri-t:#fff;--chip:#22304a}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:16px;
+ padding-top:env(safe-area-inset-top,0px)}
+#app{height:100%;display:flex;flex-direction:column}
+header{display:flex;gap:6px;padding:8px 10px;background:var(--card);border-bottom:1px solid var(--line)}
+header button{flex:1;padding:10px 4px;border:0;border-radius:10px;background:transparent;color:var(--muted);font-size:15px;font-weight:600}
+header button.on{background:var(--chip);color:var(--pri)}
+main{flex:1;min-height:0;position:relative}
+.page{display:none;position:absolute;inset:0;flex-direction:column}
+.page.on{display:flex}
+/* Nhập */
+#pgAdd{padding:10px;gap:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+#txt{flex:2;width:100%;resize:none;border:1px solid var(--line);border-radius:14px;padding:14px;font:inherit;background:var(--card);color:var(--text);outline:none;line-height:1.5}
+#txt:focus,input:focus,select:focus,textarea:focus{border-color:var(--pri)}
+.bottom{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
+input,select,textarea{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;width:100%;outline:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;overflow-y:auto;min-height:0;flex:1;align-content:flex-start}
+.chip{border:0;background:var(--chip);color:var(--pri);padding:8px 12px;border-radius:999px;font-size:14px;font-weight:600}
+.hint{font-size:13px;color:var(--muted);align-self:center}
+.btn{border:0;border-radius:14px;padding:15px;font-size:17px;font-weight:700;background:var(--pri);color:var(--pri-t);width:100%}
+.btn:disabled{opacity:.5}
+.btn.ghost{background:var(--chip);color:var(--pri)}
+.btn.red{background:transparent;color:var(--danger)}
+/* Danh sách */
+.filters{padding:8px 10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;background:var(--card);border-bottom:1px solid var(--line)}
+.filters input{grid-column:1/-1;padding:10px}
+.filters select{padding:9px 6px;font-size:14px}
+#list{flex:1;overflow-y:auto;padding:8px 10px calc(20px + env(safe-area-inset-bottom,0px))}
+.grp{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:14px 4px 6px}
+.item{display:flex;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:8px}
+.item .body{flex:1;min-width:0}
+.item .t{white-space:pre-wrap;word-break:break-word;line-height:1.45}
+.item.done .t{text-decoration:line-through;color:var(--muted)}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;font-size:12px;color:var(--muted)}
+.tag{background:var(--chip);color:var(--pri);padding:2px 8px;border-radius:999px;font-weight:600}
+input[type=checkbox]{width:24px;height:24px;padding:0;accent-color:var(--ok);flex:none;margin-top:2px}
+.empty{text-align:center;color:var(--muted);padding:40px 10px}
+/* Modal */
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10;align-items:flex-end}
+#modal.on{display:flex}
+.sheet{background:var(--bg);width:100%;max-height:92%;overflow-y:auto;border-radius:20px 20px 0 0;padding:14px;display:flex;flex-direction:column;gap:10px;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+.sheet textarea{min-height:180px;resize:vertical}
+.row{display:flex;gap:8px;align-items:center}
+.row label{display:flex;gap:8px;align-items:center;flex:1}
+.small{font-size:12px;color:var(--muted)}
+/* Cài đặt */
+#pgSet{padding:14px;gap:10px;overflow-y:auto}
+#pgSet h3{margin:6px 0 0}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90%}
+#toast.on{opacity:.95}
+#toast.err{background:var(--danger)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <button id="tAdd" class="on">✍️ Ghi</button>
+    <button id="tList">📋 Danh sách</button>
+    <button id="tSet">⚙️</button>
+  </header>
+  <main>
+    <section class="page on" id="pgAdd">
+      <textarea id="txt" placeholder="Ghi nhanh công việc, ý tưởng, nhật ký..."></textarea>
+      <div class="bottom">
+        <input id="cat" placeholder="Phân loại (gõ để gợi ý hoặc tạo mới)" autocomplete="off">
+        <div class="chips" id="chips"></div>
+        <button class="btn" id="save">Lưu</button>
+      </div>
+    </section>
+
+    <section class="page" id="pgList">
+      <div class="filters">
+        <input id="q" type="search" placeholder="🔍 Tìm trong ghi chú...">
+        <select id="fCat"></select>
+        <select id="fSt">
+          <option value="">Tất cả</option>
+          <option value="open">Chưa xong</option>
+          <option value="done">Đã xong</option>
+        </select>
+        <select id="fGrp">
+          <option value="">Không gom</option>
+          <option value="cat">Gom theo loại</option>
+          <option value="day">Gom theo ngày</option>
+        </select>
+      </div>
+      <div id="list"></div>
+    </section>
+
+    <section class="page" id="pgSet">
+      <h3>Kết nối Google Sheet</h3>
+      <div class="small">Dán link Web App của Apps Script (kết thúc bằng /exec) và mật khẩu (TOKEN) bạn đã đặt trong Code.gs.</div>
+      <input id="sUrl" placeholder="https://script.google.com/macros/s/.../exec" autocapitalize="off" autocorrect="off">
+      <input id="sTok" placeholder="Mật khẩu (TOKEN)" autocapitalize="off" autocorrect="off">
+      <input id="sSheet" placeholder="(Tuỳ chọn) Link Google Sheet để mở nhanh" autocapitalize="off">
+      <button class="btn" id="sSave">Lưu &amp; kết nối</button>
+      <button class="btn ghost" id="sOpen">Mở Google Sheet</button>
+      <div class="small" id="sMsg"></div>
+    </section>
+  </main>
+</div>
+
+<div id="modal"><div class="sheet">
+  <textarea id="eTxt"></textarea>
+  <input id="eCat" list="eCats" placeholder="Phân loại">
+  <datalist id="eCats"></datalist>
+  <div class="row"><label><input type="checkbox" id="eDone"> Đã đọc / hoàn thành</label></div>
+  <div class="small" id="eInfo"></div>
+  <button class="btn" id="eSave">Lưu thay đổi</button>
+  <button class="btn ghost" id="eCancel">Đóng</button>
+  <button class="btn red" id="eDel">🗑 Xóa ghi chú</button>
+</div></div>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let cfg = {}, items = [], editing = null;
+
+try { cfg = JSON.parse(localStorage.getItem('nk_cfg') || '{}'); } catch (e) {}
+try { items = JSON.parse(localStorage.getItem('nk_items') || '[]'); } catch (e) {}
+
+/* ---------- PWA: icon + manifest tạo tại chỗ ---------- */
+(function pwa() {
+  try {
+    const c = document.createElement('canvas'); c.width = c.height = 192;
+    const g = c.getContext('2d');
+    g.fillStyle = '#1f6feb'; g.fillRect(0, 0, 192, 192);
+    g.fillStyle = '#fff'; g.fillRect(52, 40, 88, 112, 0);
+    g.fillStyle = '#1f6feb';
+    [64, 84, 104, 124].forEach(y => g.fillRect(64, y, 64, 6));
+    const png = c.toDataURL('image/png');
+    $('touchIcon').href = png;
+    const m = { name: 'Nhật ký nhanh', short_name: 'Nhật ký', display: 'standalone', start_url: location.href,
+      background_color: '#1f6feb', theme_color: '#1f6feb', icons: [{ src: png, sizes: '192x192', type: 'image/png' }] };
+    $('manifestLink').href = URL.createObjectURL(new Blob([JSON.stringify(m)], { type: 'application/manifest+json' }));
+  } catch (e) {}
+})();
+
+/* ---------- Tiện ích ---------- */
+function toast(msg, err) {
+  const t = $('toast'); t.textContent = msg; t.className = 'on' + (err ? ' err' : '');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.className = '', 2200);
+}
+const fmt = iso => {
+  if (!iso) return '';
+  const d = new Date(iso); if (isNaN(d)) return iso;
+  const p = n => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+const dayOf = iso => { const d = new Date(iso); if (isNaN(d)) return 'Không rõ'; const p = n => String(n).padStart(2, '0'); return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`; };
+const persist = () => { try { localStorage.setItem('nk_items', JSON.stringify(items)); } catch (e) {} };
+
+async function api(action, data = {}) {
+  if (!cfg.url) { show('Set'); throw new Error('Chưa kết nối Google Sheet'); }
+  const r = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, token: cfg.token || '', ...data }) });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'Lỗi không xác định');
+  return j;
+}
+
+/* ---------- Điều hướng ---------- */
+function show(name) {
+  ['Add', 'List', 'Set'].forEach(n => { $('pg' + n).classList.toggle('on', n === name); $('t' + n).classList.toggle('on', n === name); });
+  if (name === 'List') { buildFilter(); renderList(); }
+  if (name === 'Add') renderChips();
+}
+$('tAdd').onclick = () => show('Add');
+$('tList').onclick = () => { show('List'); refresh(true); };
+$('tSet').onclick = () => { $('sUrl').value = cfg.url || ''; $('sTok').value = cfg.token || ''; $('sSheet').value = cfg.sheet || ''; show('Set'); };
+
+/* ---------- Phân loại ---------- */
+function categories() {
+  const n = {};
+  items.forEach(i => { const c = (i.cat || '').trim(); if (c) n[c] = (n[c] || 0) + 1; });
+  return Object.keys(n).sort((a, b) => n[b] - n[a]);
+}
+function renderChips() {
+  const v = $('cat').value.trim().toLowerCase();
+  const all = categories();
+  const list = (v ? all.filter(c => c.toLowerCase().includes(v)) : all).slice(0, 14);
+  let h = list.map(c => `<button type="button" class="chip" data-c="${esc(c)}">${esc(c)}</button>`).join('');
+  const exact = all.some(c => c.toLowerCase() === v);
+  if (v && !exact) h += `<span class="hint">+ Sẽ tạo phân loại mới “${esc($('cat').value.trim())}”</span>`;
+  if (!h) h = '<span class="hint">Chưa có phân loại nào. Gõ tên để tạo mới.</span>';
+  $('chips').innerHTML = h;
+}
+$('chips').onclick = e => { const b = e.target.closest('.chip'); if (b) { $('cat').value = b.dataset.c; renderChips(); } };
+$('cat').oninput = renderChips;
+
+/* ---------- Lưu ghi chú mới ---------- */
+$('save').onclick = async () => {
+  const text = $('txt').value.trim();
+  if (!text) { toast('Hãy nhập nội dung', true); return; }
+  const cat = $('cat').value.trim() || 'Chưa phân loại';
+  $('save').disabled = true; $('save').textContent = 'Đang lưu...';
+  try {
+    const j = await api('add', { text, cat });
+    items.unshift(j.item); persist();
+    $('txt').value = ''; renderChips(); toast('✓ Đã lưu');
+  } catch (e) { toast('Không lưu được: ' + e.message, true); }
+  $('save').disabled = false; $('save').textContent = 'Lưu';
+};
+$('txt').oninput = () => { try { localStorage.setItem('nk_draft', $('txt').value); } catch (e) {} };
+$('txt').value = localStorage.getItem('nk_draft') || '';
+
+/* ---------- Danh sách ---------- */
+async function refresh(quiet) {
+  if (!cfg.url) return;
+  try { const j = await api('list'); items = j.items; persist(); buildFilter(); renderList(); }
+  catch (e) { if (!quiet) toast('Lỗi tải: ' + e.message, true); else toast('Đang hiển thị dữ liệu đã lưu trên máy', true); }
+}
+function buildFilter() {
+  const cur = $('fCat').value;
+  $('fCat').innerHTML = '<option value="">Mọi loại</option>' + categories().map(c => `<option>${esc(c)}</option>`).join('');
+  $('fCat').value = cur;
+}
+function renderList() {
+  const q = $('q').value.trim().toLowerCase(), fc = $('fCat').value, fs = $('fSt').value, g = $('fGrp').value;
+  let L = items.filter(i =>
+    (!fc || i.cat === fc) && (!fs || (fs === 'done') === !!i.done) &&
+    (!q || (i.text + ' ' + i.cat).toLowerCase().includes(q)));
+  L.sort((a, b) => new Date(b.time) - new Date(a.time));
+  if (!L.length) { $('list').innerHTML = '<div class="empty">Không có ghi chú nào</div>'; return; }
+  const card = i => `<div class="item ${i.done ? 'done' : ''}" data-id="${esc(i.id)}">
+    <input type="checkbox" data-chk="${esc(i.id)}" ${i.done ? 'checked' : ''}>
+    <div class="body" data-edit="${esc(i.id)}"><div class="t">${esc(i.text)}</div>
+    <div class="meta"><span class="tag">${esc(i.cat || '—')}</span><span>${fmt(i.time)}</span>${i.upd && i.upd !== i.time ? '<span>✎ đã sửa</span>' : ''}</div></div></div>`;
+  if (!g) { $('list').innerHTML = L.map(card).join(''); return; }
+  const groups = {};
+  L.forEach(i => { const k = g === 'cat' ? (i.cat || 'Chưa phân loại') : dayOf(i.time); (groups[k] = groups[k] || []).push(i); });
+  $('list').innerHTML = Object.keys(groups).map(k => `<div class="grp">${esc(k)} (${groups[k].length})</div>` + groups[k].map(card).join('')).join('');
+}
+['q', 'fCat', 'fSt', 'fGrp'].forEach(id => $(id).addEventListener('input', renderList));
+
+$('list').onclick = async e => {
+  const chk = e.target.closest('[data-chk]');
+  if (chk) {
+    const it = items.find(i => i.id === chk.dataset.chk); if (!it) return;
+    it.done = chk.checked; persist(); renderList();
+    try { await api('update', { id: it.id, done: it.done }); }
+    catch (er) { it.done = !it.done; persist(); renderList(); toast('Lỗi: ' + er.message, true); }
+    return;
+  }
+  const ed = e.target.closest('[data-edit]');
+  if (ed) openEdit(ed.dataset.edit);
+};
+
+/* ---------- Sửa / xóa ---------- */
+function openEdit(id) {
+  editing = items.find(i => i.id === id); if (!editing) return;
+  $('eTxt').value = editing.text; $('eCat').value = editing.cat; $('eDone').checked = !!editing.done;
+  $('eCats').innerHTML = categories().map(c => `<option value="${esc(c)}">`).join('');
+  $('eInfo').textContent = 'Ghi lúc: ' + fmt(editing.time) + (editing.upd && editing.upd !== editing.time ? ' · Sửa: ' + fmt(editing.upd) : '');
+  $('modal').classList.add('on');
+}
+const closeEdit = () => { $('modal').classList.remove('on'); editing = null; };
+$('eCancel').onclick = closeEdit;
+$('modal').onclick = e => { if (e.target === $('modal')) closeEdit(); };
+$('eSave').onclick = async () => {
+  if (!editing) return;
+  const text = $('eTxt').value.trim(); if (!text) { toast('Nội dung trống', true); return; }
+  const data = { id: editing.id, text, cat: $('eCat').value.trim() || 'Chưa phân loại', done: $('eDone').checked };
+  $('eSave').disabled = true;
+  try {
+    await api('update', data);
+    Object.assign(editing, { text: data.text, cat: data.cat, done: data.done, upd: new Date().toISOString() });
+    persist(); buildFilter(); renderList(); closeEdit(); toast('✓ Đã cập nhật');
+  } catch (e) { toast('Lỗi: ' + e.message, true); }
+  $('eSave').disabled = false;
+};
+$('eDel').onclick = async () => {
+  if (!editing || !confirm('Xóa ghi chú này? Không thể khôi phục.')) return;
+  try {
+    await api('delete', { id: editing.id });
+    items = items.filter(i => i !== editing); persist(); buildFilter(); renderList(); closeEdit(); toast('Đã xóa');
+  } catch (e) { toast('Lỗi: ' + e.message, true); }
+};
+
+/* ---------- Cài đặt ---------- */
+$('sSave').onclick = async () => {
+  cfg = { url: $('sUrl').value.trim(), token: $('sTok').value.trim(), sheet: $('sSheet').value.trim() };
+  localStorage.setItem('nk_cfg', JSON.stringify(cfg));
+  $('sMsg').textContent = 'Đang kết nối...';
+  try {
+    const j = await api('list'); items = j.items; persist();
+    $('sMsg').textContent = '✓ Kết nối thành công. Dòng tiêu đề của sheet đã được app thiết lập. Hiện có ' + items.length + ' ghi chú.';
+    toast('✓ Đã kết nối');
+  } catch (e) { $('sMsg').textContent = '✗ ' + e.message + ' — kiểm tra lại link /exec, mật khẩu và quyền truy cập "Bất kỳ ai".'; }
+};
+$('sOpen').onclick = () => { if (cfg.sheet) window.open(cfg.sheet, '_blank'); else toast('Chưa nhập link Google Sheet', true); };
+
+/* ---------- Khởi động ---------- */
+if (!cfg.url) show('Set'); else { show('Add'); refresh(true); }
+renderChips();
+</script>
+</body>
+</html>
